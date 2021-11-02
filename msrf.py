@@ -1,60 +1,18 @@
-import os
-import re
-import csv
 import json
-from PIL import Image
-from os import listdir
-from os.path import isfile, join
-import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
-import os
-from glob import glob
-from PIL import Image
 np.random.seed(123)
-from sklearn.preprocessing import label_binarize
 from sklearn.metrics import confusion_matrix
-import itertools
-import warnings
+from glob import glob
 import keras
-from keras.utils.np_utils import to_categorical # used for converting labels to one-hot-encoding
-from keras.models import Sequential
+
 from keras.layers import Dense, Dropout,Input,Average,Conv2DTranspose,SeparableConv2D,dot,UpSampling2D,Add, Flatten,Concatenate,Multiply,Conv2D, MaxPooling2D,Activation,AveragePooling2D, ZeroPadding2D,GlobalAveragePooling2D,multiply,DepthwiseConv2D,ZeroPadding2D,GlobalAveragePooling2D
 from keras import backend as K
 from keras.layers import concatenate ,Lambda
-import itertools
 from keras.layers.normalization import BatchNormalization
-from keras.optimizers import SGD
-from keras.callbacks import LearningRateScheduler, ModelCheckpoint 
-import tensorflow as tf
-from keras.optimizers import Adam
-from keras.preprocessing.image import ImageDataGenerator
-from keras.callbacks import ReduceLROnPlateau
-from sklearn.model_selection import train_test_split
-from keras.applications import ResNet50,VGG19,VGG16,DenseNet121,DenseNet169,InceptionResNetV2
-from tensorflow.keras.losses import BinaryCrossentropy,CategoricalCrossentropy
-import numpy as np
-from skimage.morphology import square,binary_erosion,binary_dilation,binary_opening,binary_closing
-from skimage.morphology import erosion, dilation, opening, closing, white_tophat
-from skimage.morphology import black_tophat, skeletonize, convex_hull_image
 from keras.initializers import RandomNormal
 from keras.layers.advanced_activations import LeakyReLU
-from keras.optimizers import RMSprop
-from keras import regularizers
 from keras.models import Model
-from keras.callbacks import ModelCheckpoint
-from math import sqrt, ceil
 from PIL import Image
-import numpy as np
-from tqdm import tqdm_notebook as tqdm
-import tensorflow as tf
-import cv2
-from sklearn.model_selection import train_test_split
-from sklearn.utils import shuffle
-from tqdm import tqdm
-from glob import glob
-import tifffile as tif
-from sklearn.model_selection import train_test_split
 import os
 import numpy as np
 import cv2
@@ -62,16 +20,14 @@ import tensorflow as tf
 from tensorflow.keras.callbacks import *
 from keras.optimizers import Adam, Nadam
 from tensorflow.keras.metrics import *
-from glob import glob
-from sklearn.model_selection import train_test_split
 from sklearn.utils import shuffle
-import skimage.io
-from skimage.transform import rescale, resize, downscale_local_mean
-from skimage.color import rgb2gray
+
 gpu_options = tf.compat.v1.GPUOptions(per_process_gpu_memory_fraction=1.0)
 config = tf.compat.v1.ConfigProto()
 config.gpu_options.allow_growth = True
 sess = tf.compat.v1.Session()
+
+
 def create_dir(path):
     """ Create a directory. """
     try:
@@ -80,11 +36,13 @@ def create_dir(path):
     except OSError:
         print(f"Error: creating directory with name {path}")
 
+
 def read_data(x, y):
     """ Read the image and mask from the given path. """
     image = cv2.imread(x, cv2.IMREAD_COLOR)
     mask = cv2.imread(y, cv2.IMREAD_COLOR)
     return image, mask
+
 
 def read_params():
     """ Reading the parameters from the JSON file."""
@@ -92,6 +50,7 @@ def read_params():
         data = f.read()
         params = json.loads(data)
         return params
+
 
 def load_data(path):
     """ Loading the data from the given path. """
@@ -103,9 +62,11 @@ def load_data(path):
 
     return images, masks
 
+
 def shuffling(x, y):
     x, y = shuffle(x, y, random_state=42)
     return x, y
+
 
 def SepConv_BN(x, filters, prefix, stride=1, kernel_size=3, rate=1, depth_activation=False, epsilon=1e-3):
     if stride == 1:
@@ -132,6 +93,8 @@ def SepConv_BN(x, filters, prefix, stride=1, kernel_size=3, rate=1, depth_activa
         x = Activation("relu")(x)
 
     return x
+
+
 def get_image(image_path, image_size_wight, image_size_height,gray=False):
     # load image
     img = Image.open(image_path)
@@ -156,49 +119,43 @@ def get_image(image_path, image_size_wight, image_size_height,gray=False):
     img.close()
     return img_array,edge
 
-from glob import glob
 
+# np.random.seed(42)
+# create_dir("files")
+#
+# train_path = "../data/isic/train/"
+# valid_path = "../data/isic/valid/"
+#
+# ## Training
+# train_x = sorted(glob(os.path.join(train_path, "image", "*.jpg")))
+# train_y = sorted(glob(os.path.join(train_path, "mask", "*.jpg")))
+#
+# ## Shuffling
+# train_x, train_y = shuffling(train_x, train_y)
+# train_x = train_x
+# train_y = train_y
+#
+# ## Validation
+# valid_x = sorted(glob(os.path.join(valid_path, "image", "*.jpg")))
+# valid_y = sorted(glob(os.path.join(valid_path, "mask", "*.jpg")))
+# print("final training set length",len(train_x),len(train_y))
+#
+# X_tot_val = [get_image(sample_file,288,384) for sample_file in valid_x]
+# X_val,edge_x_val = [],[]
+# print(len(X_tot_val))
+# for i in range(0,len(valid_x)):
+#     X_val.append(X_tot_val[i][0])
+#     edge_x_val.append(X_tot_val[i][1])
+# X_val = np.array(X_val).astype(np.float32)
+# edge_x_val = np.array(edge_x_val).astype(np.float32)
+# edge_x_val = np.expand_dims(edge_x_val, axis=3)
+# Y_tot_val = [get_image(sample_file,288,384,gray=True) for sample_file in valid_y]
+# Y_val,edge_y = [],[]
+# for i in range(0,len(valid_y)):
+#     Y_val.append(Y_tot_val[i][0])
+# Y_val = np.array(Y_val).astype(np.float32)
+# Y_val = np.expand_dims(Y_val, axis=3)
 
-np.random.seed(42)
-create_dir("files")
-
-train_path = "../data/isic/train/"
-valid_path = "../data/isic/valid/"
-
-    ## Training
-train_x = sorted(glob(os.path.join(train_path, "image", "*.jpg")))
-train_y = sorted(glob(os.path.join(train_path, "mask", "*.jpg")))
-
-    ## Shuffling
-train_x, train_y = shuffling(train_x, train_y)
-train_x = train_x
-train_y = train_y
-
-    ## Validation
-valid_x = sorted(glob(os.path.join(valid_path, "image", "*.jpg")))
-valid_y = sorted(glob(os.path.join(valid_path, "mask", "*.jpg")))
-
-
-print("final training set length",len(train_x),len(train_y))
-import random
-
-    
-X_tot_val = [get_image(sample_file,288,384) for sample_file in valid_x]
-X_val,edge_x_val = [],[]
-print(len(X_tot_val))
-for i in range(0,len(valid_x)):
-    X_val.append(X_tot_val[i][0])
-    edge_x_val.append(X_tot_val[i][1])
-X_val = np.array(X_val).astype(np.float32)
-edge_x_val = np.array(edge_x_val).astype(np.float32)
-edge_x_val  =  np.expand_dims(edge_x_val,axis=3)
-Y_tot_val = [get_image(sample_file,288,384,gray=True) for sample_file in valid_y]
-Y_val,edge_y = [],[]
-for i in range(0,len(valid_y)):
-    Y_val.append(Y_tot_val[i][0])
-Y_val = np.array(Y_val).astype(np.float32)
-           
-Y_val  =  np.expand_dims(Y_val,axis=3)
 
 def dice_coef(y_true, y_pred):
     y_true_f = K.flatten(y_true)
@@ -208,6 +165,7 @@ def dice_coef(y_true, y_pred):
     score = 2. * K.sum(intersection) / (K.sum(y_true_f) + K.sum(y_pred_f))
     return score
 
+
 def dice_loss(y_true, y_pred):
     smooth = 1.
     y_true_f = K.flatten(y_true)
@@ -216,10 +174,14 @@ def dice_loss(y_true, y_pred):
     score = (2. * K.sum(intersection) + smooth) / (K.sum(y_true_f) + K.sum(y_pred_f) + smooth)
     return 1. - score
 
+
 def dice_coefficient_loss(y_true, y_pred):
     return 1.-dice_coefficient(y_true, y_pred)
+
+
 def bce_logdice_loss(y_true, y_pred):
     return binary_crossentropy(y_true, y_pred) - K.log(1. - dice_loss(y_true, y_pred))
+
 
 def weighted_bce_loss(y_true, y_pred, weight):
     epsilon = 1e-7
@@ -229,12 +191,14 @@ def weighted_bce_loss(y_true, y_pred, weight):
                      K.log(1. + K.exp(-K.abs(logit_y_pred))) + K.maximum(-logit_y_pred, 0.))
     return K.sum(loss) / K.sum(weight)
 
+
 def weighted_dice(y_true, y_pred):
     smooth = 1.
     w, m1, m2 = 0.7, y_true, y_pred
     intersection = (m1 * m2)
     score = (2. * K.sum(w * intersection) + smooth) / (K.sum(w * m1) + K.sum(w * m2) + smooth)
     return K.sum(score)
+
 
 def weighted_dice_loss(y_true, y_pred):
     smooth = 1.
@@ -243,6 +207,7 @@ def weighted_dice_loss(y_true, y_pred):
     score = (2. * K.sum(w * intersection) + smooth) / (K.sum(w * m1) + K.sum(w * m2) + smooth)
     loss = 1. - K.sum(score)
     return loss
+
 
 def weighted_bce_dice_loss(y_true, y_pred):
     y_true = K.cast(y_true, 'float32')
@@ -257,12 +222,16 @@ def weighted_bce_dice_loss(y_true, y_pred):
     weight *= (w0 / w1)
     loss = weighted_bce_loss(y_true, y_pred, weight) + dice_loss(y_true, y_pred)
     return loss
+
+
 def dice_coefficient(y_true, y_pred, smooth=1):
     y_true_f = K.flatten(y_true[:,:,:,0])
     y_pred_f = K.flatten(y_pred[:,:,:,0])
     intersection = K.sum(y_true_f * y_pred_f)
     d1 =  (2. * intersection + smooth) / (K.sum(y_true_f) + K.sum(y_pred_f) + smooth)
     return d1
+
+
 def spatial_att_block(x,intermediate_channels):
     out = Conv2D(intermediate_channels,kernel_size=(1,1),strides=(1,1),padding='same')(x)
     out = BatchNormalization()(out)
@@ -270,8 +239,7 @@ def spatial_att_block(x,intermediate_channels):
     out = Conv2D(1,kernel_size=(1,1),strides=(1,1),padding='same')(out)
     out = Activation('sigmoid')(out)
     return out
-    
-    
+
 
 def resblock(x,ip_channels,op_channels,stride=(1,1)):
     residual = x
@@ -283,6 +251,7 @@ def resblock(x,ip_channels,op_channels,stride=(1,1)):
     out = Add()([out,residual])
     out = Activation('relu')(out)
     return out
+
 
 def dual_att_blocks(skip,prev,out_channels):
     up = Conv2DTranspose(out_channels,4, strides=(2, 2), padding='same')(prev)
@@ -311,11 +280,13 @@ def gsc(input_features,gating_features,in_channels,out_channels,kernel_size=1,st
     #x = sigmoid(x)
     return x
 
+
 def se_block(in_block, ch, ratio=16):
     x = GlobalAveragePooling2D()(in_block)
     x = Dense(ch//ratio, activation='relu')(x)
     x = Dense(ch, activation='sigmoid')(x)
     return Multiply()([in_block, x])
+
 
 def Attention_B(X, G, k):
     FL = int(X.shape[-1])
@@ -343,6 +314,8 @@ def Attention_B(X, G, k):
     Final = BatchNormalization(axis=-1, momentum=0.99, epsilon=1e-5)(Final)
     print(Final.shape)
     return Final
+
+
 def Unet3(input_shape,n_filters,kernel=(3,3),strides=(1,1),pad='same'):
     x = input_shape
     conv1 = Conv2D(n_filters,kernel_size=kernel,strides=strides,padding=pad)(input_shape)
@@ -356,6 +329,8 @@ def Unet3(input_shape,n_filters,kernel=(3,3),strides=(1,1),pad='same'):
     x = Conv2D(n_filters,kernel_size = (1,1),strides = (1,1),padding = 'same')(x)
    
     return Add()([x,conv2])
+
+
 def Up3(input1,input2,kernel=(3,3),stride=(1,1), pad='same'):
     #up = UpSampling2D(2)(input2)
     up = Conv2DTranspose(int(input1.shape[-1]),(1, 1), strides=(2, 2), padding='same')(input2)
@@ -371,15 +346,19 @@ def Up3(input1,input2,kernel=(3,3),stride=(1,1), pad='same'):
     return up
     
     return Unet3(up,int(input1.shape[-1]),kernel,stride,pad)
+
+
 def gatingSig(input_shape,n_filters,kernel=(1,1),strides=(1,1),pad='same'):
     conv = Conv2D(n_filters,kernel_size=kernel,strides=strides,padding=pad)(input_shape)
     conv = BatchNormalization(axis=-1)(conv)
     return LeakyReLU(alpha=0.1)(conv)
 
+
 def DSup(x, var):
     d = Conv2D(1,(1,1), strides=(1,1), padding = "same")(x)
     d = UpSampling2D(var)(d)
     return d
+
 
 def DSup1(x, var):
     d = Conv2D(1,(2,2), strides=(2,2), padding = "same")(x)
@@ -406,6 +385,7 @@ def TverskyLoss(targets, inputs, alpha=ALPHA, beta=BETA, smooth=1e-6):
         Tversky = (TP + smooth) / (TP + alpha*FP + beta*FN + smooth)  
         
         return 1 - Tversky
+
 
 def FocalTverskyLoss(targets, inputs, alpha=ALPHA, beta=BETA, gamma=GAMMA, smooth=1e-6):
     
@@ -442,7 +422,6 @@ def sau(input_size=(384,512,3),input_size_2=(384,512,1)):
     n11 = BatchNormalization()(n11)
     n11 = se_block(n11,32)
 
-    
     n12 = Conv2D(32, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(n11)
     n12 = BatchNormalization()(n12)
     #here
@@ -546,8 +525,7 @@ def sau(input_size=(384,512,3),input_size_2=(384,512,1)):
     edge = Conv2D(1, kernel_size=(1,1),strides=(1,1),padding='same')(acts)
     edge = BatchNormalization()(edge)
     edge = Activation('relu')(edge)
-    
-    
+
     #########################
     
    
@@ -566,8 +544,7 @@ def sau(input_size=(384,512,3),input_size_2=(384,512,1)):
     pred4 = Conv2D(1,kernel_size=(1,1),strides=(1,1),padding='same',activation="sigmoid")(n34)
     pred4 = UpSampling2D(size=(4,4),interpolation='bilinear',name='pred4')(pred4)
 
-    
-   
+
     n24_preinput =Attention_B(n23,n34,64)
     n24 = Up3(n24_preinput,n34)
     n24_d = dual_att_blocks(n23,n34,64)
@@ -591,8 +568,9 @@ def sau(input_size=(384,512,3),input_size_2=(384,512,1)):
     n14 = Add()([n14,n14_input])
     n14 = Conv2D(32, 3, activation = 'relu', padding = 'same', kernel_initializer = 'he_normal')(n14)
     x = Conv2D(1,(1,1), strides=(1,1), padding="same",activation='sigmoid',name='x')(n14)
-    model = Model(inputs= [inputs_img,att],outputs = [x,pred2,pred4,pred8])
+    model = Model(inputs= [inputs_img, att], outputs = [x,pred2,pred4,pred8])
     return model
+
 
 def RDDB(x,y,nf1=128,nf2=1212,gc=64,bias=True):
     x1 = Conv2D(filters=gc, kernel_size=3, strides=1,padding='same', bias=bias)(x)
@@ -670,22 +648,23 @@ G.summary()
 checkpoint = ModelCheckpoint("unet_connected_moreRRDB.hdf5", monitor='val_dice_coef', verbose=1,save_weights_only=True,save_best_only=True, mode='max', period=1)
 from keras.models import load_model
 
+
 def seg_loss(y_true, y_pred):
     dice_s = dice_coefficient_loss(y_true,y_pred)
-
-        #ce_loss = BinaryCrossentropy(y_true,y_pred)
+    #ce_loss = BinaryCrossentropy(y_true,y_pred)
     ce_loss =tf.keras.backend.binary_crossentropy(y_true,y_pred)
-
     return ce_loss +dice_s
 
 
 def el(y_true, y_pred):
     l = keras.losses.BinaryCrossentropy(y_true,y_pred)
     return l
+
+
 def get_optimizer():
- 
     adam = Adam(lr=1e-4, beta_1=0.9, beta_2=0.999, epsilon=1e-08)
     return adam
+
 #G.load_weights("best_model_4_level.hdf5")
 #G.compile(optimizer = Adam(lr = 1e-4), loss = dice_coefficient_loss, metrics = ['accuracy',"binary_crossentropy",dice_coef])
 #G= load_model('best_model.h5')
@@ -695,6 +674,7 @@ def single_dice_coef(y_true, y_pred_bin):
     if (np.sum(y_true)==0) and (np.sum(y_pred_bin)==0):
         return 1
     return (2*intersection) / (np.sum(y_true) + np.sum(y_pred_bin))
+
 
 def mean_dice_coef(y_true, y_pred_bin):
     # shape of y_true and y_pred_bin: (n_samples, height, width, n_channels)
@@ -707,8 +687,8 @@ def mean_dice_coef(y_true, y_pred_bin):
             mean_dice_channel += channel_dice/(channel_num*batch_size)
     return mean_dice_channel
 
-def train(epochs, batch_size,output_dir, model_save_dir):
-    
+
+def train(epochs, batch_size, output_dir, model_save_dir):
     batch_count = int(len(train_x) / batch_size)
     max_val_dice= -1
     G = sau()

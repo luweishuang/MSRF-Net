@@ -73,6 +73,7 @@ config = tf.compat.v1.ConfigProto()
 config.gpu_options.allow_growth = True
 sess = tf.compat.v1.Session()
 
+
 def dice_coef(y_true, y_pred):
     y_true_f = K.flatten(y_true)
     y_pred = K.cast(y_pred, 'float32')
@@ -80,6 +81,7 @@ def dice_coef(y_true, y_pred):
     intersection = y_true_f * y_pred_f
     score = 2. * K.sum(intersection) / (K.sum(y_true_f) + K.sum(y_pred_f))
     return score
+
 
 def dice_loss(y_true, y_pred):
     smooth = 1.
@@ -89,10 +91,14 @@ def dice_loss(y_true, y_pred):
     score = (2. * K.sum(intersection) + smooth) / (K.sum(y_true_f) + K.sum(y_pred_f) + smooth)
     return 1. - score
 
+
 def dice_coefficient_loss(y_true, y_pred):
     return 1.-dice_coefficient(y_true, y_pred)
+
+
 def bce_logdice_loss(y_true, y_pred):
     return binary_crossentropy(y_true, y_pred) - K.log(1. - dice_loss(y_true, y_pred))
+
 
 def weighted_bce_loss(y_true, y_pred, weight):
     epsilon = 1e-7
@@ -102,12 +108,14 @@ def weighted_bce_loss(y_true, y_pred, weight):
                      K.log(1. + K.exp(-K.abs(logit_y_pred))) + K.maximum(-logit_y_pred, 0.))
     return K.sum(loss) / K.sum(weight)
 
+
 def weighted_dice(y_true, y_pred):
     smooth = 1.
     w, m1, m2 = 0.7, y_true, y_pred
     intersection = (m1 * m2)
     score = (2. * K.sum(w * intersection) + smooth) / (K.sum(w * m1) + K.sum(w * m2) + smooth)
     return K.sum(score)
+
 
 def weighted_dice_loss(y_true, y_pred):
     smooth = 1.
@@ -116,6 +124,7 @@ def weighted_dice_loss(y_true, y_pred):
     score = (2. * K.sum(w * intersection) + smooth) / (K.sum(w * m1) + K.sum(w * m2) + smooth)
     loss = 1. - K.sum(score)
     return loss
+
 
 def weighted_bce_dice_loss(y_true, y_pred):
     y_true = K.cast(y_true, 'float32')
@@ -130,12 +139,16 @@ def weighted_bce_dice_loss(y_true, y_pred):
     weight *= (w0 / w1)
     loss = weighted_bce_loss(y_true, y_pred, weight) + dice_loss(y_true, y_pred)
     return loss
+
+
 def dice_coefficient(y_true, y_pred, smooth=1):
     y_true_f = K.flatten(y_true[:,:,:,0])
     y_pred_f = K.flatten(y_pred[:,:,:,0])
     intersection = K.sum(y_true_f * y_pred_f)
     d1 =  (2. * intersection + smooth) / (K.sum(y_true_f) + K.sum(y_pred_f) + smooth)
     return d1
+
+
 def spatial_att_block(x,intermediate_channels):
     out = Conv2D(intermediate_channels,kernel_size=(1,1),strides=(1,1),padding='same')(x)
     out = BatchNormalization()(out)
@@ -143,8 +156,7 @@ def spatial_att_block(x,intermediate_channels):
     out = Conv2D(1,kernel_size=(1,1),strides=(1,1),padding='same')(out)
     out = Activation('sigmoid')(out)
     return out
-    
-    
+
 
 def resblock(x,ip_channels,op_channels,stride=(1,1)):
     residual = x
@@ -156,6 +168,7 @@ def resblock(x,ip_channels,op_channels,stride=(1,1)):
     out = Add()([out,residual])
     out = Activation('relu')(out)
     return out
+
 
 def dual_att_blocks(skip,prev,out_channels):
     up = Conv2DTranspose(out_channels,4, strides=(2, 2), padding='same')(prev)
@@ -184,11 +197,13 @@ def gsc(input_features,gating_features,in_channels,out_channels,kernel_size=1,st
     #x = sigmoid(x)
     return x
 
+
 def se_block(in_block, ch, ratio=16):
     x = GlobalAveragePooling2D()(in_block)
     x = Dense(ch//ratio, activation='relu')(x)
     x = Dense(ch, activation='sigmoid')(x)
     return Multiply()([in_block, x])
+
 
 def Attention_B(X, G, k):
     FL = int(X.shape[-1])
@@ -216,6 +231,8 @@ def Attention_B(X, G, k):
     Final = BatchNormalization(axis=-1, momentum=0.99, epsilon=1e-5)(Final)
     print(Final.shape)
     return Final
+
+
 def Unet3(input_shape,n_filters,kernel=(3,3),strides=(1,1),pad='same'):
     x = input_shape
     conv1 = Conv2D(n_filters,kernel_size=kernel,strides=strides,padding=pad)(input_shape)
@@ -229,6 +246,8 @@ def Unet3(input_shape,n_filters,kernel=(3,3),strides=(1,1),pad='same'):
     x = Conv2D(n_filters,kernel_size = (1,1),strides = (1,1),padding = 'same')(x)
    
     return Add()([x,conv2])
+
+
 def Up3(input1,input2,kernel=(3,3),stride=(1,1), pad='same'):
     #up = UpSampling2D(2)(input2)
     up = Conv2DTranspose(int(input1.shape[-1]),(1, 1), strides=(2, 2), padding='same')(input2)
@@ -244,15 +263,19 @@ def Up3(input1,input2,kernel=(3,3),stride=(1,1), pad='same'):
     return up
     
     return Unet3(up,int(input1.shape[-1]),kernel,stride,pad)
+
+
 def gatingSig(input_shape,n_filters,kernel=(1,1),strides=(1,1),pad='same'):
     conv = Conv2D(n_filters,kernel_size=kernel,strides=strides,padding=pad)(input_shape)
     conv = BatchNormalization(axis=-1)(conv)
     return LeakyReLU(alpha=0.1)(conv)
 
+
 def DSup(x, var):
     d = Conv2D(1,(1,1), strides=(1,1), padding = "same")(x)
     d = UpSampling2D(var)(d)
     return d
+
 
 def DSup1(x, var):
     d = Conv2D(1,(2,2), strides=(2,2), padding = "same")(x)
@@ -276,9 +299,9 @@ def TverskyLoss(targets, inputs, alpha=ALPHA, beta=BETA, smooth=1e-6):
         FP = K.sum(((1-targets) * inputs))
         FN = K.sum((targets * (1-inputs)))
        
-        Tversky = (TP + smooth) / (TP + alpha*FP + beta*FN + smooth)  
-        
+        Tversky = (TP + smooth) / (TP + alpha*FP + beta*FN + smooth)
         return 1 - Tversky
+
 
 def FocalTverskyLoss(targets, inputs, alpha=ALPHA, beta=BETA, gamma=GAMMA, smooth=1e-6):
     
@@ -466,6 +489,7 @@ def msrf(input_size=(256,256,3),input_size_2=(256,256,1)):
     x = Conv2D(1,(1,1), strides=(1,1), padding="same",activation='sigmoid',name='x')(n14)
     model = Model(inputs= [inputs_img,att],outputs = [x,pred2,pred4,pred8])
     return model
+
 
 def RDDB(x,y,nf1=128,nf2=1212,gc=64,bias=True):
     x1 = Conv2D(filters=gc, kernel_size=3, strides=1,padding='same', bias=bias)(x)
